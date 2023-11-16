@@ -1,39 +1,48 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { INIT_CORDS } from "./constant";
-import Map, { Layer, Source } from "react-map-gl/maplibre";
-import type { CircleLayer, LngLat } from "react-map-gl/maplibre";
+import Map, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
+import type { CircleLayer } from "react-map-gl/maplibre";
 import { useState } from "react";
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, Feature } from "geojson";
+import { generateCircleCordinates } from "./utils";
 
 const [INITIAL_LONGITUDE, INITIAL_LATITUDE] = INIT_CORDS;
-const geojson: FeatureCollection = {
-	type: "FeatureCollection",
-	features: [
-		{
-			type: "Feature",
-			geometry: { type: "Point", coordinates: INIT_CORDS },
-			properties: {},
-		},
-	],
-};
 
 const layerStyle: CircleLayer = {
 	id: "point",
 	type: "circle",
 	paint: {
-		"circle-radius": 90,
+		"circle-opacity": 1,
 		"circle-color": "#007cbf",
 	},
 	source: "my-data",
 };
 
 export default function App() {
-	const [circles, setCircles] = useState<Array<LngLat>>([]);
+	const [features, setFeatures] = useState<Array<Feature>>([]);
+
+	const geojson: FeatureCollection = {
+		type: "FeatureCollection",
+		features,
+	};
+
 	return (
 		<Map
 			onClick={(e) => {
 				const cords = e.lngLat;
-				setCircles((markers) => [...markers, cords]);
+				const positions = generateCircleCordinates(cords);
+				setFeatures((prev) => [
+					...prev,
+					{
+						type: "Feature",
+						properties: {},
+						id: Math.random().toString(),
+						geometry: {
+							type: "Polygon",
+							coordinates: [positions],
+						},
+					},
+				]);
 			}}
 			initialViewState={{
 				longitude: INITIAL_LONGITUDE,
@@ -43,15 +52,10 @@ export default function App() {
 			style={{ width: "100vw", height: "80vh" }}
 			mapStyle="https://demotiles.maplibre.org/style.json"
 		>
-			{circles.map((cords) => (
-				<Source
-					id={`my-data-${cords.lat}-${cords.lng}`}
-					type="geojson"
-					data={geojson}
-				>
-					<Layer {...layerStyle} />
-				</Source>
-			))}
+			<NavigationControl />
+			<Source id={`my-data`} type="geojson" data={geojson}>
+				<Layer {...layerStyle} />
+			</Source>
 		</Map>
 	);
 }
