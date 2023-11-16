@@ -1,109 +1,57 @@
-import { LngLat, Map, NavigationControl } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { BOX_SIZE, INIT_CORDS } from "./constant";
-import { generateCircleCordinates, getRandomColor } from "./utils";
+import { INIT_CORDS } from "./constant";
+import Map, { Layer, Source } from "react-map-gl/maplibre";
+import type { CircleLayer, LngLat } from "react-map-gl/maplibre";
+import { useState } from "react";
+import type { FeatureCollection } from "geojson";
 
-function App() {
-	const mapContainer = useRef<Map | null>(null);
-	const [circles, setCircles] = useState<LngLat[]>([]);
+const [INITIAL_LONGITUDE, INITIAL_LATITUDE] = INIT_CORDS;
+const geojson: FeatureCollection = {
+	type: "FeatureCollection",
+	features: [
+		{
+			type: "Feature",
+			geometry: { type: "Point", coordinates: INIT_CORDS },
+			properties: {},
+		},
+	],
+};
 
-	const drawCircle = (cords: LngLat) => {
-		const map = mapContainer?.current;
-		if (!map) return;
+const layerStyle: CircleLayer = {
+	id: "point",
+	type: "circle",
+	paint: {
+		"circle-radius": 90,
+		"circle-color": "#007cbf",
+	},
+	source: "my-data",
+};
 
-		const coordinates = generateCircleCordinates(cords, 0.5);
-
-		const cordId = `${cords.lng}-${cords.lat}`;
-
-		try {
-			map.addSource(cordId, {
-				type: "geojson",
-				data: {
-					type: "Feature",
-					geometry: {
-						type: "Polygon",
-						coordinates: [coordinates],
-					},
-				},
-			});
-			map.addLayer({
-				id: cordId,
-				type: "fill",
-				source: cordId,
-				layout: {},
-				paint: {
-					// purple fill
-					"fill-color": getRandomColor(),
-					"fill-opacity": 1,
-				},
-			});
-		} catch (error) {
-			map.removeSource(cordId);
-			map.removeLayer(cordId);
-		}
-		map.redraw();
-	};
-
-	const clearAllLayers = () => {
-		const map = mapContainer?.current;
-		if (!map) return;
-
-		const style = map.getStyle();
-		style?.layers?.forEach((layer) => {
-			// only remove layers that are added by us
-			if (layer.type === "circle") map.removeLayer(layer.id);
-		});
-	};
-
-	useEffect(() => {
-		if (mapContainer.current) return;
-
-		mapContainer.current = new Map({
-			container: "map",
-			style: "https://demotiles.maplibre.org/style.json", // stylesheet location
-			center: INIT_CORDS,
-			zoom: 5, // starting zoom
-		});
-	}, []);
-
-	useEffect(() => {
-		if (!mapContainer.current) return;
-		mapContainer.current.on("click", (e) => {
-			const cords = e.lngLat;
-			setCircles((prev) => [...prev, cords]);
-		});
-	}, [mapContainer]);
-
-	useEffect(() => {
-		clearAllLayers();
-		circles.forEach((cords) => drawCircle(cords));
-	}, [circles]);
-
-	useEffect(() => {
-		if (!mapContainer.current) return;
-		mapContainer.current.addControl(
-			new NavigationControl({
-				showCompass: true,
-				showZoom: true,
-				visualizePitch: true,
-			}),
-			"top-right"
-		);
-	}, [mapContainer]);
-
+export default function App() {
+	const [circles, setCircles] = useState<Array<LngLat>>([]);
 	return (
-		<div>
-			<div
-				id="map"
-				className="map"
-				style={{
-					width: "100vw",
-					height: BOX_SIZE,
-				}}
-			></div>
-		</div>
+		<Map
+			onClick={(e) => {
+				const cords = e.lngLat;
+				setCircles((markers) => [...markers, cords]);
+			}}
+			initialViewState={{
+				longitude: INITIAL_LONGITUDE,
+				latitude: INITIAL_LATITUDE,
+				zoom: 5,
+			}}
+			style={{ width: "100vw", height: "80vh" }}
+			mapStyle="https://demotiles.maplibre.org/style.json"
+		>
+			{circles.map((cords) => (
+				<Source
+					id={`my-data-${cords.lat}-${cords.lng}`}
+					type="geojson"
+					data={geojson}
+				>
+					<Layer {...layerStyle} />
+				</Source>
+			))}
+		</Map>
 	);
 }
-
-export default App;

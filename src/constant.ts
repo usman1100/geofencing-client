@@ -1,5 +1,3 @@
-import { LngLatLike } from "maplibre-gl";
-
 export const colors = [
 	"#FF5733",
 	"#4CAF50",
@@ -23,4 +21,4 @@ export const colors = [
 
 
 export const BOX_SIZE = "800px";
-export const INIT_CORDS: LngLatLike = [69.84381016559087, 31.26276045549733];
+export const INIT_CORDS = [69.84381016559087, 31.26276045549733];
