@@ -5,6 +5,17 @@ import { circleData } from "./data";
 const BOX_SIZE = "800px";
 const INIT_CORDS = [69.84381016559087, 31.26276045549733];
 
+const generateCircleCordinates = (center: LngLat, radius: number) => {
+	const coords = [];
+	for (let i = 0; i < 360; i++) {
+		coords.push([
+			center.lng + radius * Math.cos(i),
+			center.lat + radius * Math.sin(i),
+		]);
+	}
+	return coords;
+};
+
 function App() {
 	const [map, setMap] = useState<Map | undefined>();
 
@@ -21,38 +32,40 @@ function App() {
 
 	const drawCircle = (cords: LngLat) => {
 		if (!map) return;
-		map.addSource("circle2", {
-			type: "geojson",
-			// draw a 200km radius circle around the point
-			// cords = {lng, lat}
-			data: {
-				type: "Feature",
-				geometry: {
-					type: "Polygon",
-					coordinates: [
-						[
-							[cords.lng, cords.lat + 0.1],
-							[cords.lng + 0.1, cords.lat],
-							[cords.lng, cords.lat - 0.1],
-							[cords.lng - 0.1, cords.lat],
-							[cords.lng, cords.lat + 0.1],
-							[cords.lng + 0.1, cords.lat],
-						],
-					],
+
+		const coordinates = generateCircleCordinates(cords, 0.5);
+
+		const cordId = `${cords.lng}-${cords.lat}`;
+
+		try {
+			map.addSource(cordId, {
+				type: "geojson",
+				data: {
+					type: "Feature",
+					geometry: {
+						type: "Polygon",
+						coordinates: [coordinates],
+					},
 				},
-			},
-		});
-		map.addLayer({
-			id: "circle2",
-			type: "fill",
-			source: "circle2",
-			layout: {},
-			paint: {
-				"fill-color": "#088",
-				"fill-opacity": 0.8,
-			},
-		});
-		map.redraw();
+			});
+			map.addLayer({
+				id: cordId,
+				type: "fill",
+				source: cordId,
+				layout: {},
+				paint: {
+					"fill-color": "#088",
+					"fill-opacity": 0.8,
+				},
+			});
+		} catch (error) {
+			console.log(error);
+
+			map.removeSource(cordId);
+			map.removeLayer(cordId);
+		} finally {
+			map.redraw();
+		}
 	};
 
 	useEffect(() => {
