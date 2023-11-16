@@ -1,36 +1,48 @@
-import { LngLat, LngLatLike, Map } from "maplibre-gl";
-import { useEffect, useState } from "react";
-import { circleData } from "./data";
+import { LngLat, LngLatLike, Map, NavigationControl } from "maplibre-gl";
+import { useEffect, useRef } from "react";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 const BOX_SIZE = "800px";
-const INIT_CORDS = [69.84381016559087, 31.26276045549733];
+const INIT_CORDS: LngLatLike = [69.84381016559087, 31.26276045549733];
 
 const generateCircleCordinates = (center: LngLat, radius: number) => {
-	const coords = [];
-	for (let i = 0; i < 360; i++) {
-		coords.push([
-			center.lng + radius * Math.cos(i),
-			center.lat + radius * Math.sin(i),
-		]);
-	}
-	return coords;
+	return Array.from({ length: 360 }, (_, i) => [
+		center.lng + radius * Math.cos(i),
+		center.lat + radius * Math.sin(i),
+	]);
+};
+
+const colors = [
+	"#FF5733",
+	"#4CAF50",
+	"#FFD700",
+	"#8A2BE2",
+	"#FF4500",
+	"#00FFFF",
+	"#FF1493",
+	"#32CD32",
+	"#9932CC",
+	"#FF8C00",
+	"#008080",
+	"#8B008B",
+	"#FF69B4",
+	"#7CFC00",
+	"#00FA9A",
+	"#FF00FF",
+	"#ADFF2F",
+	"#FF00FF",
+];
+
+const getRandomColor = () => {
+	const index = Math.floor(Math.random() * colors.length);
+	return colors[index];
 };
 
 function App() {
-	const [map, setMap] = useState<Map | undefined>();
-
-	useEffect(() => {
-		setMap(
-			new Map({
-				container: "map",
-				style: "https://demotiles.maplibre.org/style.json", // stylesheet location
-				center: INIT_CORDS as LngLatLike, // starting position [lng, lat]
-				zoom: 5, // starting zoom
-			})
-		);
-	}, []);
+	const mapContainer = useRef<Map | null>(null);
 
 	const drawCircle = (cords: LngLat) => {
+		const map = mapContainer?.current;
 		if (!map) return;
 
 		const coordinates = generateCircleCordinates(cords, 0.5);
@@ -54,52 +66,57 @@ function App() {
 				source: cordId,
 				layout: {},
 				paint: {
-					"fill-color": "#088",
-					"fill-opacity": 0.8,
+					// purple fill
+					"fill-color": getRandomColor(),
+					"fill-opacity": 1,
 				},
 			});
 		} catch (error) {
-			console.log(error);
-
 			map.removeSource(cordId);
 			map.removeLayer(cordId);
-		} finally {
-			map.redraw();
 		}
 	};
 
 	useEffect(() => {
-		if (!map) return;
+		if (mapContainer.current) return;
 
-		map?.on("load", () => {
-			map.addSource("circle", {
-				type: "geojson",
-				data: circleData,
-			});
-			map.addLayer({
-				id: "circle",
-				type: "fill",
-				source: "circle",
-				layout: {},
-				paint: {
-					"fill-color": "#088",
-					"fill-opacity": 0.8,
-				},
-			});
+		mapContainer.current = new Map({
+			container: "map",
+			style: "https://demotiles.maplibre.org/style.json", // stylesheet location
+			center: INIT_CORDS,
+			zoom: 5, // starting zoom
 		});
+	}, []);
 
-		map?.on("click", (e) => {
+	useEffect(() => {
+		if (!mapContainer.current) return;
+		mapContainer.current.on("click", (e) => {
 			const cords = e.lngLat;
-			console.log(cords);
 			drawCircle(cords);
 		});
-	}, [map]);
+	}, [mapContainer]);
+
+	useEffect(() => {
+		if (!mapContainer.current) return;
+		mapContainer.current.addControl(
+			new NavigationControl({
+				showCompass: true,
+				showZoom: true,
+				visualizePitch: true,
+			}),
+			"top-right"
+		);
+	}, [mapContainer]);
 
 	return (
 		<div>
 			<div
 				id="map"
-				style={{ width: BOX_SIZE, height: BOX_SIZE, margin: "100px" }}
+				className="map"
+				style={{
+					width: "100vw",
+					height: BOX_SIZE,
+				}}
 			></div>
 		</div>
 	);
